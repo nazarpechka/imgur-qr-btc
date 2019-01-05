@@ -20,10 +20,10 @@ def check_image(url, filename):
                 print("{} - {}\n".format(qr_data, url))
                 valid_qr.write("{} - {}\n".format(qr_data, url))
 
-                if ((re.match(r'5(H|J|K).{49}$', code) or      # match private key (WIF, uncompressed pubkey) with length 51
-                   re.match(r'(K|L).{51}$', code) or           # match private key (WIF, compressed pubkey) with length 52
-                   re.match(r'S(.{21}|.{29})$', code)) and     # match mini private key with length 22 (deprecated) or 30
-                   re.match(r'[1-9A-HJ-NP-Za-km-z]+', code)):  # match only BASE58
+                if ((re.match(r'5(H|J|K).{49}$', qr_data) or      # match private key (WIF, uncompressed pubkey) with length 51
+                   re.match(r'(K|L).{51}$', qr_data) or           # match private key (WIF, compressed pubkey) with length 52
+                   re.match(r'S(.{21}|.{29})$', qr_data)) and     # match mini private key with length 22 (deprecated) or 30
+                   re.match(r'[1-9A-HJ-NP-Za-km-z]+', qr_data)):  # match only BASE58
                     print('^^^ Possibly Satoshi Nakamoto ^^^')
                     valid_qr.write('^^^ Possibly Satoshi Nakamoto ^^^\n')
 
