@@ -1,8 +1,9 @@
-# prntscrScraper
-Downloads random photos uploaded via Prntscr.
+# imgur-qr-btc
+Downloads random photos from imgur, then looks for QR codes in them. 
+If QR code contains Bitcoin private key, notifies about this discovery.
+Written in Python 3.
 
-Usage:
-python code.py (amount of threads)
+Dependencies:
+zbarlight
+PIL (pillow)
 
-Example Usage:
-python code.py 15
