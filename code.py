@@ -1,74 +1,67 @@
-import string, random, urllib, os, thread, array, sys
+import string, random, os, _thread, zbarlight, re, httplib2
+from PIL import Image
 
+THREAD_AMOUNT = 64
+NONE_WORKING = [0, 503, 5082, 4939, 4940, 4941, 12003, 5556]
 
-if len(sys.argv) < 2:
-    sys.exit("\033[37mUsage: python " + sys.argv[0] + " (Number of threads)")
-threadAmount = int(sys.argv[1])
+def check_image(url, filename):
+    try:
+        img = Image.open(filename).convert('RGBA')
+        img.load()
+        qr_codes = zbarlight.scan_codes('qrcode', img)
+    except:
+        return
 
+    if qr_codes:
+        with open('valid_qr_codes.txt', 'a') as valid_qr:
+            for qr_code in qr_codes:
+                qr_data = qr_code.decode('ascii', errors='replace')
 
-temp = 0
-#while temp < 10:
+                print("{} - {}\n".format(qr_data, url))
+                valid_qr.write("{} - {}\n".format(qr_data, url))
 
-noneWorking = [0, 503, 4939, 4940, 4941, 12003, 5556]
+                if ((re.match(r'5(H|J|K).{49}$', code) or      # match private key (WIF, uncompressed pubkey) with length 51
+                   re.match(r'(K|L).{51}$', code) or           # match private key (WIF, compressed pubkey) with length 52
+                   re.match(r'S(.{21}|.{29})$', code)) and     # match mini private key with length 22 (deprecated) or 30
+                   re.match(r'[1-9A-HJ-NP-Za-km-z]+', code)):  # match only BASE58
+                    print('^^^ Possibly Satoshi Nakamoto ^^^')
+                    valid_qr.write('^^^ Possibly Satoshi Nakamoto ^^^\n')
 
-def scrapePictures():
-	while True:
-	#	N = int(''.join(random.choice('1' + '2') for _ in range(1)))
-		amount = int(''.join(random.choice('5' + '6') for _ in range(1)))
-		if amount == 6:
-	#		N = int(''.join(random.choice('3') for _ in range(1)))
-			N = 3
-			#name = str(len([name for name in os.listdir('.') if os.path.isfile(name)]) - 1)
-			picture = str(''.join(random.choice(string.ascii_uppercase + string.digits + string.lowercase) for _ in range(N)))
-			picture2 = str(''.join(random.choice(string.digits + string.lowercase) for _ in range(N)))
-			# printsc = "http://img.prntscr.com/img?url=http://i.imgur.com/" + "" + str(picture) + str(picture2) + ".jpg"
-				# Trying to improve.
-			name = picture + picture2
-			printsc = "http://i.imgur.com/" + "" + str(picture) + str(picture2) + ".jpg"
-			urllib.urlretrieve(""+ printsc, str(name) + ".jpg")
-			file = os.path.getsize(str(name)+ ".jpg")
-			# print printsc
-				# original print file. Currently in maintance mode.
-			#print str(file) + " file"
-			if file in noneWorking:
-				print "[-] Invalid: " + picture + picture2
-				os.remove(name + ".jpg")
-			else: 
-				print "[+] Valid: " + printsc
-			#temp += 1
-		if amount == 5:
-			N = 5
-	#		N = int(''.join(random.choice('3') for _ in range(1)))
-	#		N2 = int(''.join(random.choice('2') for _ in range(1)))
-			#name = str(len([name for name in os.listdir('.') if os.path.isfile(name)]) - 1)
-			picture = str(''.join(random.choice(string.ascii_uppercase + string.digits + string.lowercase) for _ in range(N)))
-	#		picture2 = str(''.join(random.choice(string.digits + string.lowercase) for _ in range(N2)))
-			# printsc = "http://img.prntscr.com/img?url=http://i.imgur.com/" + "" + str(picture) + ".jpg"
-				# Trying to improve.
-			printsc = "http://i.imgur.com/" + "" + str(picture) + ".jpg"
-	#		printsc = "http://img.prntscr.com/img?url=http://i.imgur.com/" + "" + str(picture) + str(picture2) + ".jpg" #Porsiacaso necesito dividr 3 mixed y luego 2 numeros y minusculas
-			name = picture
-			urllib.urlretrieve(""+ printsc, str(name) + ".jpg")
-			file = os.path.getsize(str(name)+ ".jpg")
-			#print printsc
-			#print str(file) + " file"
-			if file in noneWorking:
-				print "[-] Invalid: " + picture
-				os.remove(name + ".jpg")
-			else: 
-				print "[+] Valid: " + printsc
-			#temp += 1
+def scrape_pictures(thread):
+        while True:
+            url = 'http://img.prntscr.com/img?url=http://i.imgur.com/'
+            #url = 'http://i.imgur.com/'
+            length = random.choice((5, 6))
+            if length == 5:
+                url += ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(5))
+            else:
+                url += ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(3))
+                url += ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(3))
+            url += '.jpg'
 
-tempVar2 = 1
-#threadAmount = sys.argv[2]
-while (tempVar2 <= threadAmount):
-	try:
-		print ("Starting thread #" + str(tempVar2))
-		thread.start_new_thread(scrapePictures, ())
-		tempVar2 += 1
-	except:
-		print "Error initializing thread...."
+            filename = url.rsplit('/', 1)[-1]
+        
+            h = httplib2.Http('.cache' + thread)
+            response, content = h.request(url)
+            out = open(filename, 'wb')
+            out.write(content)
+            out.close()
 
-#Make threads never stop
-while (True):
-	temp = 1+1
+            file_size = os.path.getsize(filename)
+            if file_size in NONE_WORKING:
+                os.remove(filename)
+            else:
+                check_image(url, filename)
+                os.remove(filename)
+
+print('Welcome to imgur-qr-btc scraper!')
+for thread in range(1, THREAD_AMOUNT + 1):
+    thread = str(thread)
+    try:
+        _thread.start_new_thread(scrape_pictures, (thread,))
+    except:
+        print('Error starting thread ' + thread)
+print('Succesfully started ' + thread + ' threads, enjoy!')
+
+while True:
+    pass
