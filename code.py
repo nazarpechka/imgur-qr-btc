@@ -2,7 +2,7 @@ import time, string, random, os, _thread, zbarlight, re
 import urllib.request as urllib
 from PIL import Image
 
-THREAD_AMOUNT = 256
+THREAD_AMOUNT = 128
 NONE_WORKING = [0, 503, 5082, 4939, 4940, 4941, 12003, 5556]
 
 valid_qr = 0
@@ -16,9 +16,9 @@ def check_image(url, filename):
     global valid_qr
 
     try:
-        img = Image.open(filename).convert('RGBA')
-        img.load()
-        qr_codes = zbarlight.scan_codes('qrcode', img)
+        with Image.open(filename).convert('RGBA') as img:
+            img.load()
+            qr_codes = zbarlight.scan_codes('qrcode', img)
     except:
         invalid_img += 1
         return
@@ -27,7 +27,10 @@ def check_image(url, filename):
         valid_qr += 1
         with open('valid_qr_codes.txt', 'a') as qr_file:
             for qr_code in qr_codes:
-                qr_data = qr_code.decode('ascii', errors='replace')
+                try:
+                    qr_data = qr_code.decode('ascii', errors='replace')
+                except:
+                    pass
 
                 print("{} - {}".format(qr_data, url))
                 qr_file.write("{} - {}\n".format(qr_data, url))
@@ -41,7 +44,6 @@ def check_image(url, filename):
 
 def scrape_pictures():
         global invalid_url
-
         while True:
             url = 'http://i.imgur.com/'
             length = random.choice((5, 6))
@@ -90,4 +92,4 @@ _thread.start_new_thread(stats, ())
 print('Succesfully started ' + thread + ' threads, enjoy!')
 
 while True:
-    pass
+    time.sleep(1)
